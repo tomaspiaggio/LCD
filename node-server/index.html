@@ -3,32 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <title>LCD Controller</title>
+    
 </head>
 <body>
-    <h1>Working</h1>
-    <button onclick="test('on', 0)" id="on0"> ON 0 </button>
-    <button onclick="test('off', 0)" id="off0"> OFF 0 </button>
-    <button onclick="test('on', 1)" id="on1"> ON 1 </button>
-    <button onclick="test('off', 1)" id="off1"> OFF 1 </button>
-    <button onclick="test('on', 2)" id="on2"> ON 2 </button>
-    <button onclick="test('off', 2)" id="off2"> OFF 2 </button>
-    <button onclick="test('on', 3)" id="on3"> ON 3 </button>
-    <button onclick="test('off', 3)" id="off3"> OFF 3 </button>
-    <button onclick="test('on', 4)" id="on4"> ON 4 </button>
-    <button onclick="test('off', 4)" id="off4"> OFF 4 </button>
-    <button onclick="test('on', 5)" id="on5"> ON 5 </button>
-    <button onclick="test('off', 5)" id="off5"> OFF 5 </button>
-    <button onclick="test('on', 6)" id="on6"> ON 6 </button>
-    <button onclick="test('off', 6)" id="off6"> OFF 6 </button>
-    <button onclick="test('on', 7)" id="on7"> ON 7 </button>
-    <button onclick="test('off', 7)" id="off7"> OFF 7 </button>
+    <!-- <div class="button--container">
+        <button onclick="toggle(0)" id="0" class="button"> ON 0 </button>
+        <button onclick="toggle(1)" id="1" class="button"> ON 1 </button>
+        <button onclick="toggle(2)" id="2" class="button"> ON 2 </button>
+        <button onclick="toggle(3)" id="3" class="button"> ON 3 </button>
+        <button onclick="toggle(4)" id="4" class="button"> ON 4 </button>
+        <button onclick="toggle(5)" id="5" class="button"> ON 5 </button>
+        <button onclick="toggle(6)" id="6" class="button"> ON 6 </button>
+        <button onclick="toggle(7)" id="7" class="button"> ON 7 </button>
+    </div> -->
+
+    <div>
+        <button onclick="startRecording(this);">record</button>
+        <button onclick="stopRecording(this);" disabled>stop</button>
+  
+        <h2>Recordings</h2>
+        <ul id="recordingslist"></ul>
+  
+        <h2>Log</h2>
+        <pre id="log"></pre>
+    </div>
 </body>
+
+
 <script src="/socket.io/socket.io.js"></script>
+<script type="text/javascript" src="/recorder.js"></script>
+<script src="https://www.gstatic.com/firebasejs/4.1.2/firebase.js"></script>
 <script>
     var socket = io();
 
-    function test(method, pin){
-        socket.emit(method, pin);
+    function toggle(pin){
+        var element = document.getElementById(pin + "");
+        if(element.className.indexOf(' on') > -1){
+            socket.emit('off', pin);
+            element.classList.remove('on');
+        } else {
+            socket.emit('on', pin);
+            element.classList.add('on');
+        }
     }
+</script>
+<script type="text/javascript">
+    // Recorder functions
+  var audio_context;
+  var recorder;
+
+  function startUserMedia(stream) {
+    var input = audio_context.createMediaStreamSource(stream);
+    console.log('Media stream created.');
+
+    // Uncomment if you want the audio to feedback directly
+    //input.connect(audio_context.destination);
+    //console.log('Input connected to audio context destination.');
+    
+    recorder = new Recorder(input);
+    console.log('Recorder initialised.');
+  }
+
+  function startRecording(button) {
+    recorder && recorder.record();
+    button.disabled = true;
+    button.nextElementSibling.disabled = false;
+    console.log('Recording...');
+  }
+
+  function stopRecording(button) {
+    recorder && recorder.stop();
+    button.disabled = true;
+    button.previousElementSibling.disabled = false;
+    console.log('Stopped recording.');
+    
+    // create WAV download link using audio data blob
+    createDownloadLink();
+    
+    recorder.clear();
+  }
+
+  function createDownloadLink() {
+    recorder && recorder.exportWAV(function(blob) {
+      var url = URL.createObjectURL(blob);
+      socket.emit("audio", blob);
+      var li = document.createElement('li');
+      var au = document.createElement('audio');
+      var hf = document.createElement('a');
+      
+      au.controls = true;
+      au.src = url;
+      hf.href = url;
+      hf.download = new Date().toISOString() + '.wav';
+      hf.innerHTML = hf.download;
+      li.appendChild(au);
+      li.appendChild(hf);
+      recordingslist.appendChild(li);
+    });
+  }
+
+    // On Init
+    window.onload = function init() {
+    try {
+      // webkit shim
+      window.AudioContext = window.AudioContext || window.webkitAudioContext;
+      navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia;
+      window.URL = window.URL || window.webkitURL;
+      
+      audio_context = new AudioContext;
+      console.log('Audio context set up.');
+      console.log('navigator.getUserMedia ' + (navigator.getUserMedia ? 'available.' : 'not present!'));
+    } catch (e) {
+      alert('No web audio support in this browser!');
+    }
+    
+    navigator.getUserMedia({audio: true}, startUserMedia, function(e) {
+      console.log('No live audio input: ' + e);
+    });
+  };
 </script>
 </html>

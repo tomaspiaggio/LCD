@@ -1,0 +1,13 @@
+# Created by .ignore support plugin (hsz.mobi)
+
+
+.idea
+node_modules
+.firebaserc
+firebase.json
+.idea/
+Would skip repository Recorderjs/
+Would skip repository clarity-seed/
+index.html
+node-server/node_modules/
+.DS_Store
